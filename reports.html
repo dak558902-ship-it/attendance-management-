@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}AI Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">🤖 AI Attendance Reports</div>
+    <div style="color:var(--text-muted); font-size:0.85rem; margin-top:4px;">
+      ML-powered predictions: safe leaves, dropout risk & recovery days per student
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a href="/dashboard" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    <a href="/export_report" class="btn btn-primary btn-sm"><i class="bi bi-download"></i> Export Excel</a>
+  </div>
+</div>
+
+<!-- Summary Row -->
+<div class="row g-3 mb-4">
+  {% set safe = report_data | selectattr('risk','equalto','Safe') | list | length %}
+  {% set good = report_data | selectattr('risk','equalto','Good') | list | length %}
+  {% set warn = report_data | selectattr('risk','equalto','Warning') | list | length %}
+  {% set crit = report_data | selectattr('risk','equalto','Critical') | list | length %}
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.5rem; margin-bottom:8px;">✅</div>
+      <div class="stat-value" style="color:#22c55e;">{{ safe }}</div>
+      <div class="stat-label">Safe (≥85%)</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.5rem; margin-bottom:8px;">🔵</div>
+      <div class="stat-value" style="color:#3b82f6;">{{ good }}</div>
+      <div class="stat-label">Good (75–85%)</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.5rem; margin-bottom:8px;">⚠️</div>
+      <div class="stat-value" style="color:#f59e0b;">{{ warn }}</div>
+      <div class="stat-label">Warning (60–75%)</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.5rem; margin-bottom:8px;">🚨</div>
+      <div class="stat-value" style="color:#ef4444;">{{ crit }}</div>
+      <div class="stat-label">Critical (&lt;60%)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div style="display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap; align-items:center;">
+  <input type="text" id="searchInput" class="form-control" style="max-width:220px;"
+    placeholder="🔍 Search student...">
+  <select id="riskFilter" class="form-select" style="max-width:160px;">
+    <option value="">All Risks</option>
+    <option value="Critical">🚨 Critical</option>
+    <option value="Warning">⚠️ Warning</option>
+    <option value="Good">🔵 Good</option>
+    <option value="Safe">✅ Safe</option>
+  </select>
+  <select id="classFilter" class="form-select" style="max-width:160px;">
+    <option value="">All Classes</option>
+    {% for c in classes %}
+    <option value="{{ c }}">{{ c }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Table -->
+<div class="table-wrapper">
+  <table class="table mb-0" id="reportTable">
+    <thead>
+      <tr>
+        <th>Reg No</th>
+        <th>Name</th>
+        <th>Class</th>
+        <th>Present / Total</th>
+        <th>Attendance %</th>
+        <th>Safe Leaves</th>
+        <th>Days to 75%</th>
+        <th>Risk</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in report_data %}
+      <tr data-risk="{{ r.risk }}" data-class="{{ r.class }}" data-name="{{ r.name }}" data-reg="{{ r.reg_no }}">
+        <td class="mono" style="font-size:0.82rem; color:var(--text-muted);">{{ r.reg_no }}</td>
+        <td style="font-weight:500;">{{ r.name }}</td>
+        <td><span style="background:rgba(255,255,255,0.05); border-radius:5px; padding:2px 8px; font-size:0.78rem;">{{ r.class }}</span></td>
+        <td class="mono" style="font-size:0.82rem;">{{ r.days_present }} / {{ r.total_days }}</td>
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="mono" style="font-size:0.88rem; width:50px;">{{ r.percent }}%</span>
+            <div style="flex:1; height:5px; background:rgba(255,255,255,0.07); border-radius:3px; min-width:70px;">
+              <div style="height:100%; width:{{ r.percent }}%; background:{% if r.percent>=85 %}#22c55e{% elif r.percent>=75 %}#3b82f6{% elif r.percent>=60 %}#f59e0b{% else %}#ef4444{% endif %}; border-radius:3px;"></div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="mono" style="font-weight:700; color:{% if r.safe_leaves > 5 %}#22c55e{% elif r.safe_leaves > 0 %}#f59e0b{% else %}#ef4444{% endif %};">
+            {{ r.safe_leaves }}
+          </span>
+          <span style="font-size:0.75rem; color:var(--text-muted);"> days</span>
+        </td>
+        <td>
+          {% if r.days_needed == 0 %}
+            <span style="color:#22c55e; font-size:0.82rem;">✓ Already OK</span>
+          {% else %}
+            <span class="mono" style="color:#ef4444; font-weight:700;">{{ r.days_needed }}</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);"> days</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge-risk badge-{{ r.risk_color }}">{{ r.risk }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="noResults" style="display:none; text-align:center; padding:40px; color:var(--text-muted);">
+  <i class="bi bi-search" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+  No students match your filters.
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const risk = document.getElementById('riskFilter').value;
+  const cls = document.getElementById('classFilter').value;
+  const rows = document.querySelectorAll('#reportTable tbody tr');
+  let visible = 0;
+  rows.forEach(row => {
+    const name = row.dataset.name.toLowerCase();
+    const reg = row.dataset.reg.toLowerCase();
+    const riskMatch = !risk || row.dataset.risk === risk;
+    const clsMatch = !cls || row.dataset.class === cls;
+    const searchMatch = !search || name.includes(search) || reg.includes(search);
+    if (riskMatch && clsMatch && searchMatch) {
+      row.style.display = '';
+      visible++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  document.getElementById('noResults').style.display = visible === 0 ? 'block' : 'none';
+}
+document.getElementById('searchInput').addEventListener('input', filterTable);
+document.getElementById('riskFilter').addEventListener('change', filterTable);
+document.getElementById('classFilter').addEventListener('change', filterTable);
+</script>
+{% endblock %}

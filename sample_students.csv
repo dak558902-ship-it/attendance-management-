@@ -1,0 +1,11 @@
+reg_no,name,class,dob,parent_email
+22CS001,Alice Kumar,CSE-A,2003-06-15,alice@mail.com
+22CS002,Bob Sharma,CSE-B,2003-09-22,bob@mail.com
+22CS003,Priya Nair,CSE-A,2004-01-10,priya@mail.com
+22CS004,Rahul Singh,CSE-B,2003-11-05,rahul@mail.com
+22CS005,Divya Menon,CSE-A,2004-03-18,divya@mail.com
+22ME001,Arjun Raj,MECH-A,2003-07-25,arjun@mail.com
+22ME002,Sneha Pillai,MECH-B,2004-02-14,sneha@mail.com
+22EC001,Karthik Babu,ECE-A,2003-08-30,karthik@mail.com
+22EC002,Anjali Das,ECE-B,2004-05-12,anjali@mail.com
+22IT001,Vivek Krishnan,IT-A,2003-12-20,vivek@mail.com

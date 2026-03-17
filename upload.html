@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Upload Students{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Upload Student Dataset</div>
+  <a href="/dashboard" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Upload Form -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:20px;">
+        <i class="bi bi-cloud-upload"></i> Upload CSV Files
+      </div>
+
+      <form method="POST" enctype="multipart/form-data" id="uploadForm">
+
+        <!-- Drop zone -->
+        <div id="dropZone"
+          style="border:2px dashed rgba(99,102,241,0.35);border-radius:12px;padding:36px 24px;
+                 text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:20px;
+                 background:rgba(99,102,241,0.04);"
+          onclick="document.getElementById('fileInput').click()"
+          ondragover="event.preventDefault();this.style.borderColor='#6366f1';this.style.background='rgba(99,102,241,0.08)'"
+          ondragleave="this.style.borderColor='rgba(99,102,241,0.35)';this.style.background='rgba(99,102,241,0.04)'"
+          ondrop="handleDrop(event)">
+          <div style="font-size:2.5rem;margin-bottom:10px;">📂</div>
+          <div style="font-weight:600;font-size:0.95rem;margin-bottom:6px;">Drop CSV files here or click to browse</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);">Multiple files supported · .csv only</div>
+          <input type="file" name="file" id="fileInput" multiple accept=".csv"
+            style="display:none;" onchange="showFiles(this.files)">
+        </div>
+
+        <!-- File preview list -->
+        <div id="fileList" style="margin-bottom:20px;display:none;">
+          <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:10px;">Selected Files</div>
+          <div id="fileItems" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
+        <!-- Mode toggle switch -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-weight:600;font-size:0.9rem;margin-bottom:3px;">Duplicate Handling</div>
+              <div id="modeDesc" style="font-size:0.78rem;color:var(--text-muted);">
+                Skip students who already exist in database
+              </div>
+            </div>
+            <!-- Toggle switch -->
+            <label class="toggle-wrap" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
+              <span id="modeLeft" style="font-size:0.82rem;color:#22c55e;font-weight:600;">Skip</span>
+              <div style="position:relative;width:46px;height:24px;">
+                <input type="checkbox" name="mode_toggle" id="modeToggle"
+                  style="opacity:0;width:0;height:0;position:absolute;" onchange="toggleMode()">
+                <div id="slider"
+                  style="position:absolute;inset:0;background:#334155;border-radius:24px;transition:background 0.2s;">
+                </div>
+                <div id="knob"
+                  style="position:absolute;top:3px;left:3px;width:18px;height:18px;
+                         background:white;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3);">
+                </div>
+              </div>
+              <span id="modeRight" style="font-size:0.82rem;color:var(--text-muted);font-weight:600;">Replace</span>
+            </label>
+          </div>
+          <!-- Hidden actual value -->
+          <input type="hidden" name="mode" id="modeInput" value="ignore">
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn btn-primary w-100" disabled>
+          <i class="bi bi-upload"></i> Upload Files
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Info panel -->
+  <div class="col-lg-5">
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:16px;">
+        <i class="bi bi-table"></i> Required CSV Columns
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:0.76rem;color:#94a3b8;margin-bottom:16px;line-height:1.8;">
+        reg_no, name, class, dob, parent_email<br>
+        <span style="color:#64748b;">22CS001, Alice, CSE-A, 2003-06-15, alice@mail.com</span><br>
+        <span style="color:#64748b;">22CS002, Bob, CSE-B, 2004-01-20, bob@mail.com</span>
+      </div>
+      {% set cols = [
+        ('reg_no','Unique registration number'),
+        ('name','Full student name'),
+        ('class','Class / Section  (e.g. CSE-A)'),
+        ('dob','Date of birth YYYY-MM-DD — used as student password'),
+        ('parent_email','Email for absence alerts')
+      ] %}
+      {% for col,desc in cols %}
+      <div style="display:flex;gap:10px;margin-bottom:9px;font-size:0.82rem;">
+        <span style="background:rgba(99,102,241,0.15);color:#818cf8;border-radius:4px;padding:1px 8px;font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0;">{{ col }}</span>
+        <span style="color:var(--text-muted);">{{ desc }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;">
+        <i class="bi bi-toggles"></i> Mode Explained
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:8px;padding:12px 14px;">
+          <div style="font-weight:700;font-size:0.85rem;color:#22c55e;margin-bottom:4px;">Skip (default)</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);">If a student's Reg No already exists, skip that row. New students are still added.</div>
+        </div>
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:8px;padding:12px 14px;">
+          <div style="font-weight:700;font-size:0.85rem;color:#818cf8;margin-bottom:4px;">Replace</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);">Overwrite name, class, DOB, and email for existing students. Attendance data is preserved.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showFiles(files) {
+  const list  = document.getElementById('fileList');
+  const items = document.getElementById('fileItems');
+  const btn   = document.getElementById('submitBtn');
+  if (!files || files.length === 0) {
+    list.style.display = 'none'; btn.disabled = true; return;
+  }
+  items.innerHTML = '';
+  Array.from(files).forEach(f => {
+    const size = f.size < 1024 ? f.size+'B' : (f.size/1024).toFixed(1)+'KB';
+    items.innerHTML += `
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.04);
+                  border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+        <span style="font-size:1.1rem;">📄</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.85rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
+          <div style="font-size:0.73rem;color:var(--text-muted);">${size}</div>
+        </div>
+        <span style="background:rgba(34,197,94,0.12);color:#22c55e;border-radius:4px;padding:1px 8px;font-size:0.72rem;font-weight:600;">CSV</span>
+      </div>`;
+  });
+  list.style.display = 'block';
+  btn.disabled = false;
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = 'rgba(99,102,241,0.35)';
+  document.getElementById('dropZone').style.background  = 'rgba(99,102,241,0.04)';
+  const dt    = e.dataTransfer;
+  const input = document.getElementById('fileInput');
+  // Assign dropped files to input (DataTransfer trick)
+  input.files = dt.files;
+  showFiles(dt.files);
+}
+
+function toggleMode() {
+  const toggle  = document.getElementById('modeToggle');
+  const slider  = document.getElementById('slider');
+  const knob    = document.getElementById('knob');
+  const input   = document.getElementById('modeInput');
+  const desc    = document.getElementById('modeDesc');
+  const left    = document.getElementById('modeLeft');
+  const right   = document.getElementById('modeRight');
+
+  if (toggle.checked) {
+    slider.style.background = '#6366f1';
+    knob.style.left         = '25px';
+    input.value             = 'replace';
+    desc.textContent        = 'Overwrite existing students with new data from CSV';
+    left.style.color        = 'var(--text-muted)';
+    right.style.color       = '#818cf8';
+  } else {
+    slider.style.background = '#334155';
+    knob.style.left         = '3px';
+    input.value             = 'ignore';
+    desc.textContent        = 'Skip students who already exist in database';
+    left.style.color        = '#22c55e';
+    right.style.color       = 'var(--text-muted)';
+  }
+}
+</script>
+{% endblock %}

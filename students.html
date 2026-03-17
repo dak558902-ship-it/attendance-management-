@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Students{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Students</div>
+  <div style="display:flex;gap:10px;">
+    <a href="/dashboard" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    <a href="/upload" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Add Students</a>
+  </div>
+</div>
+
+<!-- Search / Filter -->
+<form method="GET" style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+  <input type="text" name="search" value="{{ search }}" class="form-control"
+    placeholder="🔍 Search by name or reg no" style="max-width:280px;">
+  <select name="class_filter" class="form-select" style="max-width:180px;" onchange="this.form.submit()">
+    <option value="">All Classes</option>
+    {% for c in classes %}
+    <option value="{{ c }}" {% if c==class_filter %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-primary btn-sm">Search</button>
+  {% if search or class_filter %}
+  <a href="/students" class="btn btn-outline-secondary btn-sm">Clear</a>
+  {% endif %}
+</form>
+
+<div class="table-wrapper">
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th>Reg No</th>
+        <th>Name</th>
+        <th>Class</th>
+        <th>Email</th>
+        <th>Present / Total</th>
+        <th>Attendance</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in students %}
+      {% set pct = (s.days_present/s.total_days*100)|round(2) if s.total_days > 0 else 0 %}
+      <tr>
+        <td class="mono" style="color:var(--text-muted); font-size:0.82rem;">{{ s.reg_no }}</td>
+        <td style="font-weight:500;">{{ s.name }}</td>
+        <td><span style="background:rgba(255,255,255,0.05); border-radius:5px; padding:2px 8px; font-size:0.78rem;">{{ s.class }}</span></td>
+        <td style="font-size:0.82rem; color:var(--text-muted);">{{ s.parent_email }}</td>
+        <td class="mono" style="font-size:0.82rem;">{{ s.days_present }} / {{ s.total_days }}</td>
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="mono" style="font-size:0.88rem; width:46px;">{{ pct }}%</span>
+            <div style="flex:1; height:5px; background:rgba(255,255,255,0.07); border-radius:3px; min-width:80px;">
+              <div style="height:100%; width:{{ pct }}%; background:{% if pct>=85 %}#22c55e{% elif pct>=75 %}#3b82f6{% elif pct>=60 %}#f59e0b{% else %}#ef4444{% endif %}; border-radius:3px;"></div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="badge-risk {% if pct>=85 %}badge-success{% elif pct>=75 %}badge-info{% elif pct>=60 %}badge-warning{% else %}badge-danger{% endif %}">
+            {% if pct>=85 %}Safe{% elif pct>=75 %}Good{% elif pct>=60 %}Warning{% else %}Critical{% endif %}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if not students %}
+<div style="text-align:center; padding:60px; color:var(--text-muted);">
+  <i class="bi bi-people" style="font-size:3rem; display:block; margin-bottom:12px;"></i>
+  No students found. <a href="/upload" style="color:var(--accent);">Upload a CSV</a> to add students.
+</div>
+{% endif %}
+{% endblock %}

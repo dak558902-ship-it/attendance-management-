@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Absent Report{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">📋 Absent Report</div>
+    <div style="color:var(--text-muted);font-size:0.85rem;margin-top:4px;">
+      Date: <strong style="color:var(--text);">{{ att_date }}</strong>
+      &nbsp;·&nbsp;
+      <strong style="color:#ef4444;">{{ absent_details|length }}</strong> student(s) absent
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a href="/attendance/export_absent" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-download"></i> Export Excel
+    </a>
+    <a href="/attendance" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Back to Attendance
+    </a>
+  </div>
+</div>
+
+{% if absent_details %}
+
+<!-- Email result banner -->
+{% if email_results %}
+  {% set sent_ok = email_results|selectattr('success')|list|length %}
+  {% set sent_fail = email_results|length - sent_ok %}
+  <div style="background:{% if sent_fail==0 %}rgba(34,197,94,0.08){% else %}rgba(245,158,11,0.08){% endif %};
+              border:1px solid {% if sent_fail==0 %}rgba(34,197,94,0.25){% else %}rgba(245,158,11,0.25){% endif %};
+              border-radius:10px;padding:14px 20px;margin-bottom:20px;font-size:0.88rem;">
+    {% if sent_fail==0 %}
+      ✅ All <strong>{{ sent_ok }}</strong> email(s) sent successfully!
+    {% else %}
+      ⚠ <strong>{{ sent_ok }}</strong> sent, <strong>{{ sent_fail }}</strong> failed.
+    {% endif %}
+    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+      {% for r in email_results %}
+        <span style="background:{% if r.success %}rgba(34,197,94,0.1){% else %}rgba(239,68,68,0.1){% endif %};
+                     border:1px solid {% if r.success %}rgba(34,197,94,0.25){% else %}rgba(239,68,68,0.25){% endif %};
+                     border-radius:6px;padding:3px 10px;font-size:0.78rem;
+                     color:{% if r.success %}#86efac{% else %}#fca5a5{% endif %};">
+          {% if r.success %}✓{% else %}✗{% endif %} {{ r.name }}
+          {% if not r.success %}<span title="{{ r.msg }}">ⓘ</span>{% endif %}
+        </span>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- Absent table with checkboxes -->
+  <div class="col-lg-8">
+    <form method="POST" action="/attendance/send_email" id="emailForm">
+      <div class="table-wrapper" style="margin-bottom:14px;">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th style="width:40px;">
+                <input type="checkbox" id="checkAll" class="form-check-input" style="width:16px;height:16px;cursor:pointer;accent-color:#6366f1;">
+              </th>
+              <th>S.No</th>
+              <th>Name</th>
+              <th>Reg No</th>
+              <th>Class</th>
+              <th>Email</th>
+              <th>Att%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in absent_details %}
+            <tr>
+              <td>
+                <input type="checkbox" name="send_to" value="{{ d.reg_no }}"
+                  class="form-check-input row-cb" style="width:16px;height:16px;cursor:pointer;accent-color:#6366f1;" checked>
+              </td>
+              <td class="mono" style="color:var(--text-muted);font-size:0.8rem;">{{ loop.index }}</td>
+              <td style="font-weight:600;">{{ d.name }}</td>
+              <td class="mono" style="font-size:0.8rem;color:var(--text-muted);">{{ d.reg_no }}</td>
+              <td><span style="background:rgba(255,255,255,0.05);border-radius:4px;padding:2px 7px;font-size:0.75rem;">{{ d.class }}</span></td>
+              <td style="font-size:0.82rem;color:var(--text-muted);">{{ d.email }}</td>
+              <td>
+                <span class="mono" style="font-size:0.85rem;color:{% if d.percent>=75 %}#22c55e{% elif d.percent>=60 %}#f59e0b{% else %}#ef4444{% endif %};">
+                  {{ d.percent }}%
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-envelope-fill"></i> Send Email to Selected
+        </button>
+        <span id="selectedCount" style="font-size:0.82rem;color:var(--text-muted);"></span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Summary panel -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:16px;">
+        <i class="bi bi-bar-chart"></i> Absence Summary
+      </div>
+      {% set below75 = absent_details|selectattr('percent','lt',75)|list|length %}
+      {% set below60 = absent_details|selectattr('percent','lt',60)|list|length %}
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.18);border-radius:8px;">
+          <span style="font-size:0.85rem;color:#fca5a5;">Total Absent</span>
+          <span class="mono" style="font-size:1.3rem;font-weight:800;color:#ef4444;">{{ absent_details|length }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.18);border-radius:8px;">
+          <span style="font-size:0.85rem;color:#fde68a;">Below 75%</span>
+          <span class="mono" style="font-size:1.3rem;font-weight:800;color:#f59e0b;">{{ below75 }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.12);border-radius:8px;">
+          <span style="font-size:0.85rem;color:#fca5a5;">Critical (&lt;60%)</span>
+          <span class="mono" style="font-size:1.3rem;font-weight:800;color:#ef4444;">{{ below60 }}</span>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;font-size:0.8rem;color:var(--text-muted);line-height:1.6;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--border);">
+        <strong style="color:var(--text);">Email Note:</strong><br>
+        Configure SMTP credentials in <code style="color:#818cf8;">app.py</code> before sending emails.<br><br>
+        Use Gmail App Password (not your login password).<br>
+        Enable 2FA → Google Account → App Passwords.
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div style="text-align:center;padding:80px 20px;color:var(--text-muted);">
+  <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+  <div style="font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:8px;">No Absences Today!</div>
+  <div style="font-size:0.88rem;">All students were present on {{ att_date }}.</div>
+  <a href="/attendance" class="btn btn-outline-secondary btn-sm" style="margin-top:20px;">
+    <i class="bi bi-arrow-left"></i> Back to Attendance
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const checkAll = document.getElementById('checkAll');
+const cbs      = document.querySelectorAll('.row-cb');
+const countEl  = document.getElementById('selectedCount');
+
+function updateCount() {
+  const n = [...cbs].filter(c=>c.checked).length;
+  if (countEl) countEl.textContent = n > 0 ? `${n} student(s) selected` : 'None selected';
+}
+
+if (checkAll) {
+  checkAll.addEventListener('change', () => {
+    cbs.forEach(cb => cb.checked = checkAll.checked);
+    updateCount();
+  });
+}
+cbs.forEach(cb => cb.addEventListener('change', updateCount));
+updateCount();
+</script>
+{% endblock %}

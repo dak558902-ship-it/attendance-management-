@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Dashboard</div>
+    <div style="color:var(--text-muted); font-size:0.85rem; margin-top:4px;">
+      Welcome back, <strong style="color:var(--text);">{{ session.get('admin_name','Staff') }}</strong>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a href="/attendance" class="btn btn-primary btn-sm"><i class="bi bi-calendar-check"></i> Mark Today</a>
+    <a href="/upload" class="btn btn-outline-secondary btn-sm"><i class="bi bi-upload"></i> Upload CSV</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.8rem; margin-bottom:8px;">👥</div>
+      <div class="stat-value">{{ total_students }}</div>
+      <div class="stat-label">Total Students</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.8rem; margin-bottom:8px;">📊</div>
+      <div class="stat-value">{{ average_attendance }}%</div>
+      <div class="stat-label">Avg Attendance</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.8rem; margin-bottom:8px;">⚠️</div>
+      <div class="stat-value" style="color:#f59e0b;">{{ below_75_count }}</div>
+      <div class="stat-label">Below 75%</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card">
+      <div style="font-size:1.8rem; margin-bottom:8px;">🚨</div>
+      <div class="stat-value" style="color:#ef4444;">{{ critical_count }}</div>
+      <div class="stat-label">Critical (&lt;60%)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <a href="/attendance" style="text-decoration:none;">
+      <div class="card" style="border-color:rgba(99,102,241,0.3); transition:all 0.2s;" onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='rgba(99,102,241,0.3)'">
+        <div style="font-size:2rem; margin-bottom:10px;">📋</div>
+        <div style="font-weight:600; margin-bottom:4px;">Mark Attendance</div>
+        <div style="font-size:0.82rem; color:var(--text-muted);">Record today's attendance for all students</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="/reports" style="text-decoration:none;">
+      <div class="card" style="border-color:rgba(34,197,94,0.3); transition:all 0.2s;" onmouseover="this.style.borderColor='#22c55e'" onmouseout="this.style.borderColor='rgba(34,197,94,0.3)'">
+        <div style="font-size:2rem; margin-bottom:10px;">🤖</div>
+        <div style="font-weight:600; margin-bottom:4px;">AI Reports</div>
+        <div style="font-size:0.82rem; color:var(--text-muted);">Dropout risk and attendance predictions</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="/analytics" style="text-decoration:none;">
+      <div class="card" style="border-color:rgba(59,130,246,0.3); transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='rgba(59,130,246,0.3)'">
+        <div style="font-size:2rem; margin-bottom:10px;">📈</div>
+        <div style="font-weight:600; margin-bottom:4px;">Analytics</div>
+        <div style="font-size:0.82rem; color:var(--text-muted);">Visual charts and attendance overview</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Recent Students Table -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+  <h2 style="font-size:1rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted);">Recent Students</h2>
+  <a href="/students" style="font-size:0.82rem; color:var(--accent); text-decoration:none;">View All →</a>
+</div>
+<div class="table-wrapper">
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th>Reg No</th>
+        <th>Name</th>
+        <th>Class</th>
+        <th>Attendance</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in students[:10] %}
+      {% set pct = (s.days_present/s.total_days*100)|round(2) if s.total_days > 0 else 0 %}
+      <tr>
+        <td class="mono" style="color:var(--text-muted); font-size:0.82rem;">{{ s.reg_no }}</td>
+        <td style="font-weight:500;">{{ s.name }}</td>
+        <td><span style="background:rgba(255,255,255,0.05); border-radius:5px; padding:2px 8px; font-size:0.78rem;">{{ s.class }}</span></td>
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="mono" style="font-size:0.88rem; width:46px;">{{ pct }}%</span>
+            <div style="flex:1; height:5px; background:rgba(255,255,255,0.07); border-radius:3px; min-width:80px;">
+              <div style="height:100%; width:{{ pct }}%; background:{% if pct>=85 %}#22c55e{% elif pct>=75 %}#3b82f6{% elif pct>=60 %}#f59e0b{% else %}#ef4444{% endif %}; border-radius:3px;"></div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="badge-risk {% if pct>=85 %}badge-success{% elif pct>=75 %}badge-info{% elif pct>=60 %}badge-warning{% else %}badge-danger{% endif %}">
+            {% if pct>=85 %}Safe{% elif pct>=75 %}Good{% elif pct>=60 %}Warning{% else %}Critical{% endif %}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

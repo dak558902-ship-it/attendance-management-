@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Mark Attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Mark Attendance</div>
+    <div style="color:var(--text-muted);font-size:0.85rem;margin-top:4px;">
+      📅 <strong style="color:var(--text);">{{ today }}</strong>
+      {% if already_marked %}
+        <span style="background:rgba(245,158,11,0.12);color:#f59e0b;border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:2px 10px;font-size:0.75rem;margin-left:8px;">⚠ Already marked today</span>
+      {% endif %}
+    </div>
+  </div>
+  <a href="/dashboard" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+{% if already_marked %}
+<div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:14px 20px;margin-bottom:20px;font-size:0.88rem;color:#fde68a;">
+  ⚠ Attendance was already submitted for today. Submitting again will <strong>add a duplicate record</strong>. Proceed only if you need to correct it.
+</div>
+{% endif %}
+
+<div class="row g-4">
+
+  <!-- Left: S.No entry form -->
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:18px;">
+        <i class="bi bi-keyboard"></i> Enter Absent Serial Numbers
+      </div>
+
+      <form method="POST" id="attForm">
+        <div style="margin-bottom:16px;">
+          <label class="form-label">Absent Students (S.No)</label>
+          <textarea name="absent_serial" id="absentInput" class="form-control"
+            rows="4"
+            placeholder="e.g.  3, 5, 7-10, 15, 18-20"
+            style="font-family:'JetBrains Mono',monospace;font-size:1rem;resize:vertical;"></textarea>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:7px;line-height:1.6;">
+            • Enter S.No of <strong style="color:#ef4444;">absent</strong> students separated by commas<br>
+            • Use a dash for a range — e.g. <code style="color:#818cf8;">7-10</code> marks 7,8,9,10 absent<br>
+            • Leave <strong>blank</strong> to mark everyone present
+          </div>
+        </div>
+
+        <!-- Live preview -->
+        <div id="previewBox" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:none;">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#f87171;letter-spacing:0.06em;margin-bottom:8px;">🚨 Will be marked Absent</div>
+          <div id="previewList" style="font-size:0.85rem;color:#fca5a5;line-height:1.8;"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-save"></i> Save Attendance
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: Student list for reference -->
+  <div class="col-lg-7">
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">
+          <i class="bi bi-list-ol"></i> Student Reference List
+        </span>
+        <input type="text" id="searchRef" class="form-control form-control-sm"
+          placeholder="Quick search…" style="max-width:180px;">
+      </div>
+      <div style="overflow-y:auto;max-height:500px;">
+        <table class="table mb-0" id="refTable">
+          <thead style="position:sticky;top:0;background:var(--card-bg);z-index:2;">
+            <tr>
+              <th style="width:50px;">S.No</th>
+              <th>Reg No</th>
+              <th>Name</th>
+              <th>Class</th>
+              <th>Att%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            {% set pct = (s.days_present/s.total_days*100)|round(1) if s.total_days>0 else 0 %}
+            <tr data-sn="{{ loop.index }}" data-name="{{ s.name|lower }}" data-reg="{{ s.reg_no|lower }}">
+              <td class="mono" style="color:var(--text-muted);font-size:0.82rem;font-weight:700;">{{ loop.index }}</td>
+              <td class="mono" style="font-size:0.78rem;color:var(--text-muted);">{{ s.reg_no }}</td>
+              <td style="font-weight:500;font-size:0.88rem;">{{ s.name }}</td>
+              <td><span style="background:rgba(255,255,255,0.05);border-radius:4px;padding:1px 7px;font-size:0.75rem;">{{ s.class }}</span></td>
+              <td>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:{% if pct>=75 %}#22c55e{% elif pct>=60 %}#f59e0b{% else %}#ef4444{% endif %};">
+                  {{ pct }}%
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Build serial→{name,reg_no} map from table
+const studentMap = {};
+document.querySelectorAll('#refTable tbody tr').forEach(row => {
+  studentMap[parseInt(row.dataset.sn)] = {
+    name: row.cells[2].textContent.trim(),
+    reg:  row.cells[1].textContent.trim()
+  };
+});
+
+function parseSerials(raw) {
+  const sns = new Set();
+  raw.replace(/，/g,',').split(/[\s,]+/).forEach(part => {
+    part = part.trim();
+    if (!part) return;
+    if (part.includes('-')) {
+      const [a,b] = part.split('-').map(Number);
+      if (!isNaN(a) && !isNaN(b)) for(let i=a;i<=b;i++) sns.add(i);
+    } else {
+      const n = parseInt(part);
+      if (!isNaN(n)) sns.add(n);
+    }
+  });
+  return sns;
+}
+
+const input    = document.getElementById('absentInput');
+const preview  = document.getElementById('previewBox');
+const prevList = document.getElementById('previewList');
+const refRows  = document.querySelectorAll('#refTable tbody tr');
+
+function updatePreview() {
+  const sns = parseSerials(input.value);
+  // Highlight rows
+  refRows.forEach(row => {
+    const sn = parseInt(row.dataset.sn);
+    row.style.background = sns.has(sn) ? 'rgba(239,68,68,0.1)' : '';
+    row.cells[0].style.color = sns.has(sn) ? '#ef4444' : '';
+  });
+  // Preview list
+  if (sns.size === 0) { preview.style.display = 'none'; return; }
+  const lines = [...sns].sort((a,b)=>a-b).map(sn => {
+    const s = studentMap[sn];
+    return s ? `<span style="display:inline-block;margin-right:14px;"><strong style="color:#e2e8f0;">#${sn}</strong> ${s.name} <span style="color:#64748b;">(${s.reg})</span></span>` : `<span style="color:#64748b;">#${sn} (not found)</span>`;
+  });
+  prevList.innerHTML = lines.join('');
+  preview.style.display = 'block';
+}
+
+input.addEventListener('input', updatePreview);
+
+// Quick search on reference list
+document.getElementById('searchRef').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  refRows.forEach(row => {
+    const match = row.dataset.name.includes(q) || row.dataset.reg.includes(q) || row.dataset.sn.includes(q);
+    row.style.display = match ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}
